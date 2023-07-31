@@ -108,3 +108,5 @@ while attempts < 3 and not success:
         print("\nAggregated German Wikipedia Edits Per Minute:")
         for timestamp, edits_count in german_edits_per_minute.items():
             print(f"{timestamp}: {edits_count}")
+
+        

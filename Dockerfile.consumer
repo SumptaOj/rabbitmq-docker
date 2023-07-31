@@ -1,15 +1,14 @@
 # Use the official Python image as the base image
 FROM python:3.8-slim
 
-# Set the working directory inside the container
+# create a working directory
 WORKDIR /app
 
 # Copy the Python script and any other necessary files to the working directory
-COPY producer.py /app/producer.py
-COPY de_challenge_sample_data.csv /app/de_challenge_sample_data.csv
+COPY consumer.py /app/consumer.py
 
 # Install the necessary dependencies
 RUN pip install pika
 
 # Run the Python script when the container starts
-CMD ["python3", "producer.py"]
+CMD ["python3", "consumer.py"]
