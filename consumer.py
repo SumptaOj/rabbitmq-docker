@@ -1,5 +1,6 @@
 import pika
-from datetime import datetime, time
+from datetime import datetime
+import time
 import json
 
 # Global counter for edits per minute
@@ -19,10 +20,6 @@ def callback(ch, method, properties, body):
         # Extract the timestamp and server name from the JSON object
         timestamp_str = message.get('timestamp')
         server_name = message.get('server_name')
-
-        # if not timestamp_str or not server_name:
-        #     print("Missing required fields in the message.")
-        #     return
 
         # Convert the timestamp string to a timestamp object
         try:
@@ -71,16 +68,16 @@ def connect(callback):
 
 attempts = 0
 success = False
-while attempts < 3 and not success:
+while attempts < 5 and not success:
     try:
         connect(callback)
 
     except pika.exceptions.AMQPConnectionError:
         print(f"Error connecting to RabbitMQ server.")
         attempts += 1
-        if attempts < 3:
-            print(f"Retrying in 5 seconds...")
-            time.sleep(5)
+        if attempts < 5:
+            print(f"Retrying in 7 seconds...")
+            time.sleep(7)
         else:
             print(f"Max attempts reached. Exiting...")
             success = True

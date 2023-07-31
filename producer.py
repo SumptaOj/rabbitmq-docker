@@ -66,16 +66,16 @@ def emit():
 
 attempts = 0
 success = False
-while attempts < 3 and not success:
+while attempts < 5 and not success:
     try:
         emit()
 
     except pika.exceptions.AMQPConnectionError:
         print(f"Error connecting to RabbitMQ server.")
         attempts += 1
-        if attempts < 3:
-            print(f"Retrying in 5 seconds...")
-            time.sleep(5)
+        if attempts < 5:
+            print(f"Retrying in 7 seconds...")
+            time.sleep(7)
         else:
             print(f"Max attempts reached. Exiting...")
             success = True
