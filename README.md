@@ -14,15 +14,7 @@ The goal of this project is to create a system that collects and processes Wikip
 
 ## Project Structure
 
-The repository has the following structure:
-
-rabbitmq/
-  ├── docker-compose.yml
-  ├── Dockerfile_producer
-  ├── Dockerfile_consumer
-  ├── producer.py
-  ├── consumer.py
-  └── README.md
+The repository has the following files:
 
 - `docker-compose.yml`: The Docker Compose configuration file that defines the RabbitMQ server, producer, and consumer services.
 
