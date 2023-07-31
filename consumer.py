@@ -1,81 +1,110 @@
 import pika
-import time
-from datetime import datetime
+from datetime import datetime, time
 import json
-import pandas as pd
 
+# Global counter for edits per minute
+global_edits_per_minute = {}
+german_edits_per_minute = {}
 
-class WikipediaEditsProcessor:
-    def __init__(self):
-        self.global_edits_per_minute = {}
-        self.german_edits_per_minute = {}
-        self.connection = None
+# Callback function when a message is received
+def callback(ch, method, properties, body):
+    print(f" [x] Received {body.decode()}")
+    global global_edits_per_minute
+    global german_edits_per_minute
 
-    def process_message(self, ch, method, properties, body):
+    try:
+        # Convert the incoming message (body) to a JSON object
+        message = json.loads(body)
+
+        # Extract the timestamp and server name from the JSON object
+        timestamp_str = message.get('timestamp')
+        server_name = message.get('server_name')
+
+        # if not timestamp_str or not server_name:
+        #     print("Missing required fields in the message.")
+        #     return
+
+        # Convert the timestamp string to a timestamp object
         try:
-            # Convert the incoming message (body) to a JSON object
-            message = json.loads(body)
+            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            # If the timestamp is in a different format ("%Y-%m-%d %H:%M:%S"), adjust the format
+            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
 
-            # Extract the timestamp and server name from the JSON object
-            timestamp_str = message.get('timestamp')
-            server_name = message.get('server_name')
-            edit_id = message.get("edit_id")
+        # Increment the global edits counter for this minute
+        global_edits_per_minute[timestamp] = global_edits_per_minute.get(timestamp, 0) + 1
 
-            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S").replace(second=0)
+        # Check if the edit is for the German Wikipedia
+        if "de.wikipedia.org" in server_name:
+            # Increment the German Wikipedia edits counter for this minute
 
-            # Check if the edit is for the German Wikipedia
-            if "de.wikipedia.org" in server_name:
-                # Increment the German Wikipedia edits counter for this minute
-                self.german_edits_per_minute[timestamp] = self.german_edits_per_minute.get(timestamp, 0) + 1
-                print(f"Printing German edit for {timestamp}: 1")
-            else:
-                # Increment the global edits counter for this minute
-                self.global_edits_per_minute[timestamp] = self.global_edits_per_minute.get(timestamp, 0) + 1
-                print(f"Printing Global edit for {timestamp}")
+            german_edits_per_minute[timestamp] = german_edits_per_minute.get(timestamp, 0) + 1
 
-        except Exception as e:
-            print(f"Error occurred while processing message: {str(e)}")
+    except Exception as e:
+        print(f"Error occurred while processing message: {str(e)}")
 
-    def start_consuming(self):
-        try:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
-            channel = self.connection.channel()
 
-            # Declaring the exchange and queue (make sure to match the exchange and queue names with the producer)
-            channel.exchange_declare(exchange='wikipedia_edits', exchange_type='direct')
-            channel.queue_declare(queue='global_wikipedia_queue')
+# Establishing connection to RabbitMQ server
 
-            # Bind the queue to the exchange with the appropriate routing key (make sure to match with the producer)
-            channel.queue_bind(exchange='wikipedia_edits', queue='global_wikipedia_queue',
-                               routing_key='global_wikipedia_key')
+def connect(callback):
+    connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+    channel = connection.channel()
 
-            # Set up the callback function to be triggered when a message is received
-            channel.basic_consume(queue='global_wikipedia_queue', on_message_callback=self.process_message, auto_ack=True)
+    # Declaring the exchange and queue 
+    channel.exchange_declare(exchange='wikipedia_edits', exchange_type='direct')
+    channel.queue_declare(queue='wikipedia_queue')
 
-            print('Waiting for messages. To exit, press CTRL+C')
+    # Bind the queue to the exchange with the appropriate routing key 
+    channel.queue_bind(exchange='wikipedia_edits', queue='wikipedia_queue', routing_key='wikipedia_key')
 
-            # Start consuming messages from the queue
-            channel.start_consuming()
+    # Set up the callback function to be triggered when a message is received
+    channel.basic_consume(queue='wikipedia_queue', on_message_callback=callback, auto_ack=True)
 
-        except Exception as e:
-            print(f"Error occurred: {str(e)}")
+    print('Waiting for messages. To exit, press CTRL+C')
 
-        finally:
-            # After consuming all messages, print the aggregated edits per minute data
-            self.print_aggregated_data()
-            self.connection.close()
-            print(f"Connection closed")
+    # Start consuming messages from the queue
+    channel.start_consuming()
 
-    def print_aggregated_data(self):
+    connection.close()
+    
+    print(f"Connection closed")
+
+attempts = 0
+success = False
+while attempts < 3 and not success:
+    try:
+        connect(callback)
+
+    except pika.exceptions.AMQPConnectionError:
+        print(f"Error connecting to RabbitMQ server.")
+        attempts += 1
+        if attempts < 3:
+            print(f"Retrying in 5 seconds...")
+            time.sleep(5)
+        else:
+            print(f"Max attempts reached. Exiting...")
+            success = True
+
+    except KeyboardInterrupt:
+        print(f"Consumer interrupted.")
+        success = True
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        attempts += 1
+        if attempts < 3:
+            print(f"Retrying in 5 seconds...")
+            time.sleep(5)
+        else:
+            print(f"Max attempts reached. Exiting...")
+            success = True
+
+    finally:
+        # After consuming all messages, print the aggregated edits per minute data
         print("\nAggregated Global Edits Per Minute:")
-        for timestamp, edits_count in self.global_edits_per_minute.items():
+        for timestamp, edits_count in global_edits_per_minute.items():
             print(f"{timestamp}: {edits_count}")
 
         print("\nAggregated German Wikipedia Edits Per Minute:")
-        for timestamp, edits_count in self.german_edits_per_minute.items():
+        for timestamp, edits_count in german_edits_per_minute.items():
             print(f"{timestamp}: {edits_count}")
-
-
-if __name__ == "__main__":
-    wikipedia_processor = WikipediaEditsProcessor()
-    wikipedia_processor.start_consuming()

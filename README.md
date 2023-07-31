@@ -36,8 +36,6 @@ This command will start the RabbitMQ server and the producer and consumer contai
 
 ## Note
 
-Replace /path/to/producer.py in producer.py with the actual path to the respective Python script.
-
 To stop the containers, press 'Ctrl+C' in the terminal where the Docker Compose is running.
 
 To remove the Docker containers and images created by Docker Compose, run the following command:

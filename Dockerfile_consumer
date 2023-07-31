@@ -8,7 +8,7 @@ WORKDIR /app
 COPY consumer.py /app/consumer.py
 
 # Install the necessary dependencies
-RUN pip install pika pandas
+RUN pip install pika
 
 # Run the Python script when the container starts
 CMD ["python3", "consumer.py"]

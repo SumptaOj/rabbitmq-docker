@@ -1,5 +1,4 @@
 version: '3'
-
 services:
   rabbitmq:
     image: rabbitmq:3.12-management
@@ -8,23 +7,32 @@ services:
       - "5672:5672"  # RabbitMQ default port
       - "15672:15672" # RabbitMQ management console port
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq  # Persist RabbitMQ data
+      - ./rabbitmq_data:/var/lib/rabbitmq  # Persist RabbitMQ data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15672"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   producer:
     build:
       context: .
-      dockerfile: Dockerfile_producer
+      dockerfile: Dockerfile.producer
     depends_on:
       - rabbitmq
-    command: tail -f /dev/null
+      - consumer
+    restart: on-failure
 
   consumer:
     build:
       context: .
-      dockerfile: Dockerfile_consumer
+      dockerfile: Dockerfile.consumer
     depends_on:
       - rabbitmq
-    command: tail -f /dev/null
+    links:
+      - rabbitmq
+    restart: on-failure
+    
 
 volumes:
   rabbitmq_data:
