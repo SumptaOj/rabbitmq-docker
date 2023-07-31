@@ -1,0 +1,14 @@
+# Use the official Python image as the base image
+FROM python:3.8-slim
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the Python script to the working directory
+COPY consumer.py /app/consumer.py
+
+# Install the necessary dependencies
+RUN pip install pika pandas
+
+# Run the Python script when the container starts
+CMD ["python3", "consumer.py"]

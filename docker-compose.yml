@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbit-server
+    ports:
+      - "5672:5672"  # RabbitMQ default port
+      - "15672:15672" # RabbitMQ management console port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq  # Persist RabbitMQ data
+
+  producer:
+    build:
+      context: .
+      dockerfile: Dockerfile_producer
+    depends_on:
+      - rabbitmq
+    command: tail -f /dev/null
+
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile_consumer
+    depends_on:
+      - rabbitmq
+    command: tail -f /dev/null
+
+volumes:
+  rabbitmq_data:
